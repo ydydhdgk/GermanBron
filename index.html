@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Хочешь играть / гулять? Бронируй!</title>
+<style>
+:root{--bg:#f6f3ff;--card:#ffffff;--text:#1d1a2b;--muted:#6b6683;--line:#ddd7f0;--accent:#6c4cf1;--accent-text:#ffffff;--chip:#efeaff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14111f;--card:#201b33;--text:#f2eeff;--muted:#a49dc2;--line:#362f52;--accent:#8f78ff;--accent-text:#12101c;--chip:#2c2547}}
+:root[data-theme="dark"]{--bg:#14111f;--card:#201b33;--text:#f2eeff;--muted:#a49dc2;--line:#362f52;--accent:#8f78ff;--accent-text:#12101c;--chip:#2c2547}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.4}
+main{max-width:480px;margin:0 auto;padding:24px 16px 40px}
+h1{font-size:28px;line-height:1.15;margin:8px 0 6px}
+.sub{color:var(--muted);margin:0 0 20px}
+form{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px}
+label,.lbl{display:block;font-weight:600;margin:0 0 8px;font-size:15px}
+.field{margin-bottom:20px}
+input[type=text],input[type=time],input[type=date]{width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.chip{position:relative;display:block;margin:0;cursor:pointer}
+.chip input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.chip span{display:block;text-align:center;padding:12px 6px;border-radius:12px;background:var(--chip);border:2px solid transparent;font-weight:600;font-size:14px}
+.chip input:checked+span{border-color:var(--accent);background:var(--accent);color:var(--accent-text)}
+.chip input:focus-visible+span{outline:2px solid var(--accent)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row label{font-weight:500;color:var(--muted);font-size:13px}
+button{width:100%;font:inherit;font-weight:700;font-size:17px;padding:15px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-text);cursor:pointer}
+button.alt{background:var(--chip);color:var(--text);font-size:15px;margin-top:10px;font-weight:600}
+.err{color:#d6336c;font-size:14px;min-height:20px;margin:0 0 10px}
+.note{color:var(--muted);font-size:13px;margin:12px 0 0;text-align:center}
+#done{display:none;margin-top:16px}
+</style>
+</head>
+<body>
+<main>
+<h1>Хочешь играть / гулять? Бронируй!</h1>
+<p class="sub">Заполни анкету — и она улетит мне в Telegram.</p>
+
+<form id="f" novalidate>
+  <div class="field">
+    <label for="name">Твоё имя</label>
+    <input type="text" id="name" placeholder="Как тебя зовут?" autocomplete="given-name">
+  </div>
+
+  <div class="field">
+    <span class="lbl">Что хочешь?</span>
+    <div class="chips">
+      <label class="chip"><input type="radio" name="act" value="Играть"><span>🎮 Играть</span></label>
+      <label class="chip"><input type="radio" name="act" value="Гулять"><span>🚶 Гулять</span></label>
+      <label class="chip"><input type="radio" name="act" value="Общаться"><span>💬 Общаться</span></label>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="date">Когда (дата)</label>
+    <input type="date" id="date">
+  </div>
+
+  <div class="field">
+    <span class="lbl">Время</span>
+    <div class="row">
+      <div><label for="from">С</label><input type="time" id="from"></div>
+      <div><label for="to">До</label><input type="time" id="to"></div>
+    </div>
+  </div>
+
+  <p class="err" id="err" role="alert"></p>
+  <button type="submit">Отправить анкету</button>
+  <p class="note">Откроется Telegram с готовым сообщением — останется нажать «Отправить».</p>
+
+  <div id="done">
+    <button type="button" class="alt" id="copy">Скопировать текст анкеты</button>
+  </div>
+</form>
+</main>
+
+<script>
+(function(){
+  var TG = "hizidi";
+  var f = document.getElementById("f"), err = document.getElementById("err");
+  var done = document.getElementById("done"), lastText = "";
+  var today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  document.getElementById("date").min = today.toISOString().slice(0,10);
+
+  function fmtDate(v){ var p = v.split("-"); return p[2] + "." + p[1] + "." + p[0]; }
+
+  f.addEventListener("submit", function(e){
+    e.preventDefault();
+    var name = document.getElementById("name").value.trim();
+    var act = f.querySelector('input[name="act"]:checked');
+    var date = document.getElementById("date").value;
+    var from = document.getElementById("from").value;
+    var to = document.getElementById("to").value;
+    err.textContent = "";
+    if(!name){ err.textContent = "Напиши своё имя."; return; }
+    if(!act){ err.textContent = "Выбери: играть, гулять или общаться."; return; }
+    if(!date){ err.textContent = "Выбери дату."; return; }
+    if(!from || !to){ err.textContent = "Укажи время «с» и «до»."; return; }
+    if(to <= from){ err.textContent = "Время «до» должно быть позже времени «с»."; return; }
+
+    lastText = "📋 Новая анкета\n" +
+      "Имя: " + name + "\n" +
+      "Хочет: " + act.value + "\n" +
+      "Дата: " + fmtDate(date) + "\n" +
+      "Время: с " + from + " до " + to;
+
+    done.style.display = "block";
+    window.location.href = "https://t.me/" + TG + "?text=" + encodeURIComponent(lastText);
+  });
+
+  document.getElementById("copy").addEventListener("click", function(){
+    var b = this;
+    try{
+      navigator.clipboard.writeText(lastText).then(function(){ b.textContent = "Скопировано ✓"; },
+        function(){ b.textContent = "Не удалось скопировать"; });
+    }catch(e){ b.textContent = "Не удалось скопировать"; }
+  });
+})();
+</script>
+</body>
+</html>
